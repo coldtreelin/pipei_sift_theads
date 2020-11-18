@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "D:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC\\include",
+                "D:\\OpenCV3.4.1\\opencv\\build\\include",
+                "D:\\OpenCV3.4.1\\opencv\\build\\include\\opencv2",
+                "D:\\OpenCV3.4.1\\opencv\\build\\include\\opencv",
+                "C:\\Program Files (x86)\\Windows Kits\\8.1\\Include\\shared",
+                "C:\\Program Files (x86)\\Windows Kits\\8.1\\Include\\um",
+                "C:\\Program Files (x86)\\Windows Kits\\8.1\\Include\\winrt"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "D:/Program Files (x86)/Microsoft Visual Studio 12.0/VC/bin/amd64/cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "msvc-x64"
+        }
+    ],
+    "version": 4
+}

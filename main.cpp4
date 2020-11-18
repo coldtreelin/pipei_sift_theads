@@ -1,0 +1,190 @@
+# include  "opencv2/opencv_modules.hpp"
+# include "opencv2/core/core.hpp"
+# include "opencv2/features2d/features2d.hpp"
+# include "opencv2/highgui/highgui.hpp"
+# include "opencv2/xfeatures2d/nonfree.hpp"
+//#include <opencv2/xfeatures2d.hpp>
+
+#include <stdio.h>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <math.h>
+#include <thread>
+#include <mutex>
+#include <ctime>
+using namespace cv;
+using namespace std;
+using namespace xfeatures2d;
+ 
+static string imgdir = ".\\";
+static string imgName = "baby.jpg";
+static string tmpName = "tmp2.jpg";
+
+mutex mu;
+auto pDetector = SIFT::create();
+auto pExtractor = SIFT::create(); 
+Ptr<DescriptorMatcher> pMatcher = DescriptorMatcher::create("BruteForce");
+
+//IplImage *src;
+static vector<KeyPoint> LeftKey;
+//vector<KeyPoint> RightKey;
+static Mat LeftDescriptor;
+//Mat RightDescriptor;
+
+
+const int xstep = 4;
+const int ystep = 4;
+
+static	int maxv=0;
+static  vector<DMatch> max_matches;
+static	vector<KeyPoint> maxKeys;
+static Mat maxImage;
+
+static void fun(int xstart,int xend,int ystart,int yend,int tmpWidth,int tmpHeight,int xstep,int ystep,IplImage*src);
+void MatchTemplateSIFT()
+{
+	string TmpImgPath = imgdir + tmpName;
+	string imgpath = imgdir + imgName;
+
+	Mat TemplateMat = imread(TmpImgPath,CV_LOAD_IMAGE_GRAYSCALE);
+	if(!TemplateMat.data){
+		cout<<"no template exist";
+		return ;
+	}
+	int TemplateWidth = TemplateMat.cols;
+	int TemplateHeight = TemplateMat.rows;
+	std::cout<<"TemplateWidth "<<TemplateWidth<<endl;
+	std::cout<<"TemplateHeight ·ç¶¯”õ¶¯ "<<TemplateHeight<<endl;
+    
+    pDetector->detect(TemplateMat, LeftKey);
+	pExtractor->compute(TemplateMat, LeftKey, LeftDescriptor);
+	Mat mat_src = imread(imgpath, CV_LOAD_IMAGE_GRAYSCALE );
+    if(!mat_src.data) {
+    	cout<<"no src img";
+    	return ;
+    }	
+	IplImage * src  = &IplImage(mat_src);
+	long ImgWidth = src->width;
+	long ImgHeight = src->height;
+	std::cout<<"ImgWidth "<<ImgWidth<<endl;
+	std::cout<<"ImgHeight"<<ImgHeight<<endl;
+	const int tdnum =6;
+	int temp = (ImgHeight - TemplateHeight+1)/tdnum;
+	//fun(0,ImgWidth - TemplateWidth,0,(ImgHeight - TemplateHeight),TemplateWidth,TemplateHeight,xstep,ystep,src);
+	thread task[tdnum];
+	for(int i = 1;i<=tdnum;i++)
+	{
+		task[i-1].swap(thread(fun,0,ImgWidth - TemplateWidth,(temp)*(i-1),temp*i-1,
+			TemplateWidth,TemplateHeight,xstep,ystep,src));		
+	}
+	for(int i = 1;i<=tdnum;i++)
+	{
+		task[i-1].join();
+	}
+	/*thread task1(fun,0,ImgWidth - TemplateWidth,0,(ImgHeight - TemplateHeight)/2,
+		TemplateWidth,TemplateHeight,xstep,ystep,src);
+	thread task2(fun,0,ImgWidth - TemplateWidth,(ImgHeight - TemplateHeight)/2+1,ImgHeight - TemplateHeight,
+		TemplateWidth,TemplateHeight,xstep,ystep,src);
+	task1.join();
+	task2.join();*/
+	//dooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+	//fun(0,0,ImgWidth - TemplateWidth,ImgHeight - TemplateHeight,TemplateWidth,TemplateHeight,xstep,ystep);
+	Mat OutImage;
+	drawMatches(TemplateMat, LeftKey, maxImage, maxKeys,
+	               max_matches, OutImage, Scalar::all(-1), Scalar::all(-1),
+	               vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+	IplImage OutImage_lpl = IplImage(OutImage);
+	IplImage MaxImage_lpl = IplImage(maxImage);
+	
+	/*cvNamedWindow( "Match features", 1);
+	cvShowImage("Match features", &(OutImage_lpl));
+	cvNamedWindow( "max", 2);
+	cvShowImage("max", &(MaxImage_lpl));
+	cvWaitKey( 0 );
+	cvDestroyWindow( "Match features" );
+	cvDestroyWindow( "max" );*/
+ 
+	string savepath = imgdir +"save"+ imgName;
+	  //-- Show detected (drawn) keypoints
+	imwrite(savepath, OutImage );//
+
+	std::cout<<"finish";
+
+	delete pDetector;
+	delete pExtractor;
+	delete pMatcher;
+ 
+}
+static void fun(int xstart,int xend,int ystart,int yend,int tmpWidth,int tmpHeight,int xstep,int ystep,IplImage*src)
+{
+	int x,rec=0;
+	vector<DMatch> Matches;
+	IplImage* dst; 
+	for(int y = ystart; y <yend; y += ystep){
+		if(++rec%2==0)
+			cout<<yend<<":"<<y<<endl;
+		for(x = xstart; x < xend;x += xstep)
+		{
+			mu.lock();
+			cvSetImageROI(src,cvRect(x, y, tmpWidth,tmpHeight));
+		    dst = cvCreateImage(cvSize(tmpWidth,tmpHeight),	IPL_DEPTH_8U,src->nChannels);
+			int a = clock();
+		    cvCopy(src,dst,0);
+		    cvResetImageROI(src);
+			int b =clock()-a;
+			cout<<"time"<<b<<endl;
+			mu.unlock();
+
+		    Mat DstImage = cvarrToMat(dst); 
+			Mat  RightDescriptor;
+			vector<KeyPoint> RightKey;
+		    pDetector->detect(DstImage, RightKey); 
+			pExtractor->compute(DstImage, RightKey, RightDescriptor);
+ 
+			pMatcher->match(LeftDescriptor, RightDescriptor, Matches);
+
+			double max_dist = 0; double min_dist = 200;
+ 
+			//-- Quick calculation of max and min distances between keypoints
+			for( int i = 0; i < LeftDescriptor.rows; i++ )
+			{ 
+				double dist = Matches[i].distance;
+				if( dist < min_dist ) min_dist = dist;
+				if( dist > max_dist ) max_dist = dist;
+			}	
+			std::vector<DMatch> good_matches;
+			for(int i = 0; i < LeftDescriptor.rows; i++ )
+			{ 
+				if(Matches[i].distance < 0.5*max_dist )
+				{ 
+					good_matches.push_back( Matches[i]);
+				}
+			}
+			
+			if(good_matches.size()>maxv)
+			{
+				mu.lock();
+				maxv = good_matches.size();
+				max_matches = good_matches;
+				maxImage = DstImage;
+				maxKeys = RightKey;
+			//	cout<<"maxv:"<<maxv<<" "<<endl;
+				mu.unlock();
+			}		
+			
+		}//for x
+	}//for  y
+
+}
+
+int main()
+{
+	clock_t starttime,endtime;
+	starttime = clock();
+	MatchTemplateSIFT();
+	endtime = clock();
+	cout<<"\ntime:"<<endtime-starttime<<endl;
+	system("pause");
+	return 0;
+}

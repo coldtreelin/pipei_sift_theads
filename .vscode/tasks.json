@@ -1,0 +1,32 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "cv111",
+			"command": "cl.exe",
+			"args": [
+				"/Zi",
+				"/EHsc",
+				"/Fe:",
+				"${fileDirname}\\${fileBasenameNoExtension}.exe",
+				"${file}",
+				"-I","D:\\OpenCV3.4.1\\opencv\\build\\include",
+				"-I","D:\\OpenCV3.4.1\\opencv\\build\\include\\opencv2",
+				"-I","D:\\OpenCV3.4.1\\opencv\\build\\include\\opencv",
+				"-l","D:\\OpenCV3.4.1\\opencv\\build\\x64\\vc12\\lib\\*.lib"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"detail": "compiler: cl.exe"
+		}
+	]
+}

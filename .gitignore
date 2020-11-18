@@ -1,0 +1,8 @@
+*.jpg
+*.png
+*.exe
+*.ilk
+*.obj
+*.pdb
+!baby.jpg
+!tmp2.jpg
